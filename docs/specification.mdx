@@ -31,7 +31,6 @@ skill-name/
 | `metadata` | 否 | 任意键值映射，用于附加 metadata。 |
 | `allowed-tools` | 否 | 以空格分隔的字符串，列出该 skill 可使用的预批准 tool。（实验性） |
 
-<Card>
 **最小示例：**
 
 ```markdown SKILL.md
@@ -53,7 +52,6 @@ metadata:
  version: "1.0"
 ---
 ```
-</Card>
 
 #### `name` field
 
@@ -99,17 +97,17 @@ name: pdf--processing # 不允许连续连字符
 - 应同时 描述该 skill 做什么以及何时使用
 - 应包含有助于 agent 识别相关 task 的具体关键词
 
-<Card>
 **好示例：**
+
 ```yaml
 description: 从 PDF 文件 中提取文本和表格、填写 PDF 表单，并合并多个 PDF。处理 PDF 文档，或 user 提到 PDF、表单、 文档提取时使用。
 ```
 
 **差示例：**
+
 ```yaml
 description: 帮助处理 PDF。
 ```
-</Card>
 
 #### `license` field
 
@@ -117,12 +115,11 @@ description: 帮助处理 PDF。
 - 指定应用于该 skill 的 license
 - 建议保持简短（license 名称或打包 license file 的名称）
 
-<Card>
 **示例：**
+
 ```yaml
 license: Proprietary. LICENSE.txt has complete terms
 ```
-</Card>
 
 #### `compatibility` field
 
@@ -131,18 +128,19 @@ license: Proprietary. LICENSE.txt has complete terms
 - 只有当你的 skill 有特定环境要求时才应包含
 - 可以 说明目标产品、所需系统包、网络访问需求等
 
-<Card>
 **示例：**
+
 ```yaml
 compatibility: Designed for Claude Code (or similar products)
 ```
+
 ```yaml
 compatibility: Requires git, docker, jq, and access to the internet
 ```
+
 ```yaml
 compatibility: Requires Python 3.14+ and uv
 ```
-</Card>
 
 <Note>
 大多数 skills 不需要 `compatibility` field。
@@ -155,14 +153,13 @@ compatibility: Requires Python 3.14+ and uv
 - client 可以用它存储 Agent Skills specification 未定义的附加属性
 - 建议让键名足够独特，以避免意外冲突
 
-<Card>
 **示例：**
+
 ```yaml
 metadata:
  author: example-org
  version: "1.0"
 ```
-</Card>
 
 #### `allowed-tools` field
 
@@ -170,12 +167,11 @@ metadata:
 - 一个以空格分隔的字符串，列出预批准运行的 tool
 - 实验性 field。不同 agent 实现对此 field 的支持可能不同
 
-<Card>
 **示例：**
+
 ```yaml
 allowed-tools: Bash(git:*) Bash(jq:*) Read
 ```
-</Card>
 
 ### 正文内容
 
