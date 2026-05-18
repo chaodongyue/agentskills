@@ -1,71 +1,71 @@
 ---
-title: "Specification"
-description: "The complete format specification for Agent Skills."
+title: "specification"
+description: "Agent Skills 的完整格式 specification。"
 ---
 
-## Directory structure
+## directory 结构
 
-A skill is a directory containing, at minimum, a `SKILL.md` file:
+一个 skill 是一个 directory，至少包含一个 `SKILL.md` file：
 
 ```
 skill-name/
-├── SKILL.md          # Required: metadata + instructions
-├── scripts/          # Optional: executable code
-├── references/       # Optional: documentation
-├── assets/           # Optional: templates, resources
-└── ...               # Any additional files or directories
+├──SKILL.md # 必需：metadata + instructions
+├──scripts/ # 可选：executable code
+├──references/ # 可选：documentation
+├──assets/ # 可选：template、resource
+└──... # 任何其他 file 或 directory
 ```
 
-## `SKILL.md` format
+## `SKILL.md` 格式
 
-The `SKILL.md` file must contain YAML frontmatter followed by Markdown content.
+`SKILL.md` file 必须先包含 YAML frontmatter，然后是 Markdown 内容。
 
 ### Frontmatter
 
-| Field | Required | Constraints |
+| field | 必需| 约束 |
 |-------|----------|-------------|
-| `name` | Yes | Max 64 characters. Lowercase letters, numbers, and hyphens only. Must not start or end with a hyphen. |
-| `description` | Yes | Max 1024 characters. Non-empty. Describes what the skill does and when to use it. |
-| `license` | No | License name or reference to a bundled license file. |
-| `compatibility` | No | Max 500 characters. Indicates environment requirements (intended product, system packages, network access, etc.). |
-| `metadata` | No | Arbitrary key-value mapping for additional metadata. |
-| `allowed-tools` | No | Space-separated string of pre-approved tools the skill may use. (Experimental) |
+| `name` | 是 | 最多 64 个字符。只能包含小写字母、数字和连字符。不能以连字符开头或结尾。 |
+| `description` | 是 | 最多 1024 个字符。不能为空。 描述该 skill 做什么以及何时使用。 |
+| `license` | 否 | license 名称，或对打包 license file 的 reference。 |
+| `compatibility` | 否 | 最多 500 个字符。 说明环境要求（目标产品、系统包、网络访问等）。 |
+| `metadata` | 否 | 任意键值映射，用于附加 metadata。 |
+| `allowed-tools` | 否 | 以空格分隔的字符串，列出该 skill 可使用的预批准 tool。（实验性） |
 
 <Card>
-**Minimal example:**
+**最小示例：**
 
 ```markdown SKILL.md
 ---
 name: skill-name
-description: A description of what this skill does and when to use it.
+description: 描述这个 skill 做什么以及何时使用。
 ---
 ```
 
-**Example with optional fields:**
+**包含可选 field 的示例：**
 
 ```markdown SKILL.md
 ---
 name: pdf-processing
-description: Extract PDF text, fill forms, merge files. Use when handling PDFs.
+description: 提取 PDF 文本、填写表单、合并文件。处理 PDF 时使用。
 license: Apache-2.0
 metadata:
-  author: example-org
-  version: "1.0"
+ author: example-org
+ version: "1.0"
 ---
 ```
 </Card>
 
 #### `name` field
 
-The required `name` field:
-- Must be 1-64 characters
-- May only contain unicode lowercase alphanumeric characters (`a-z`) and hyphens (`-`)
-- Must not start or end with a hyphen (`-`)
-- Must not contain consecutive hyphens (`--`)
-- Must match the parent directory name
+必需的 `name` field：
+- 必须为 1 到 64 个字符
+- 只能包含 unicode 小写字母数字字符（`a-z`）和连字符（`-`）
+- 不能以连字符（`-`）开头或结尾
+- 不能包含连续连字符（`--`）
+- 必须与父 directory 名称匹配
 
 <Card>
-**Valid examples:**
+**有效示例：**
 ```yaml
 name: pdf-processing
 ```
@@ -76,45 +76,45 @@ name: data-analysis
 name: code-review
 ```
 
-**Invalid examples:**
+**无效示例：**
 ```yaml
-name: PDF-Processing  # uppercase not allowed
+name: PDF-Processing # 不允许大写
 ```
 ```yaml
-name: -pdf  # cannot start with hyphen
+name: -pdf # 不能以连字符开头
 ```
 ```yaml
-name: pdf--processing  # consecutive hyphens not allowed
+name: pdf--processing # 不允许连续连字符
 ```
 </Card>
 
 #### `description` field
 
-The required `description` field:
-- Must be 1-1024 characters
-- Should describe both what the skill does and when to use it
-- Should include specific keywords that help agents identify relevant tasks
+必需的 `description` field：
+- 必须为 1 到 1024 个字符
+- 应同时 描述该 skill 做什么以及何时使用
+- 应包含有助于 agent 识别相关 task 的具体关键词
 
 <Card>
-**Good example:**
+**好示例：**
 ```yaml
-description: Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs. Use when working with PDF documents or when the user mentions PDFs, forms, or document extraction.
+description: 从 PDF 文件 中提取文本和表格、填写 PDF 表单，并合并多个 PDF。处理 PDF 文档，或 user 提到 PDF、表单、 文档提取时使用。
 ```
 
-**Poor example:**
+**差示例：**
 ```yaml
-description: Helps with PDFs.
+description: 帮助处理 PDF。
 ```
 </Card>
 
 #### `license` field
 
-The optional `license` field:
-- Specifies the license applied to the skill
-- We recommend keeping it short (either the name of a license or the name of a bundled license file)
+可选的 `license` field：
+- 指定应用于该 skill 的 license
+- 建议保持简短（license 名称或打包 license file 的名称）
 
 <Card>
-**Example:**
+**示例：**
 ```yaml
 license: Proprietary. LICENSE.txt has complete terms
 ```
@@ -122,13 +122,13 @@ license: Proprietary. LICENSE.txt has complete terms
 
 #### `compatibility` field
 
-The optional `compatibility` field:
-- Must be 1-500 characters if provided
-- Should only be included if your skill has specific environment requirements
-- Can indicate intended product, required system packages, network access needs, etc.
+可选的 `compatibility` field：
+- 如果提供，必须为 1 到 500 个字符
+- 只有当你的 skill 有特定环境要求时才应包含
+- 可以 说明目标产品、所需系统包、网络访问需求等
 
 <Card>
-**Examples:**
+**示例：**
 ```yaml
 compatibility: Designed for Claude Code (or similar products)
 ```
@@ -141,89 +141,89 @@ compatibility: Requires Python 3.14+ and uv
 </Card>
 
 <Note>
-Most skills do not need the `compatibility` field.
+大多数 skills 不需要 `compatibility` field。
 </Note>
 
 #### `metadata` field
 
-The optional `metadata` field:
-- A map from string keys to string values
-- Clients can use this to store additional properties not defined by the Agent Skills spec
-- We recommend making your key names reasonably unique to avoid accidental conflicts
+可选的 `metadata` field：
+- 从字符串键到字符串值的映射
+- client 可以用它存储 Agent Skills specification 未定义的附加属性
+- 建议让键名足够独特，以避免意外冲突
 
 <Card>
-**Example:**
+**示例：**
 ```yaml
 metadata:
-  author: example-org
-  version: "1.0"
+ author: example-org
+ version: "1.0"
 ```
 </Card>
 
 #### `allowed-tools` field
 
-The optional `allowed-tools` field:
-- A space-separated string of tools that are pre-approved to run
-- Experimental. Support for this field may vary between agent implementations
+可选的 `allowed-tools` field：
+- 一个以空格分隔的字符串，列出预批准运行的 tool
+- 实验性 field。不同 agent 实现对此 field 的支持可能不同
 
 <Card>
-**Example:**
+**示例：**
 ```yaml
 allowed-tools: Bash(git:*) Bash(jq:*) Read
 ```
 </Card>
 
-### Body content
+### 正文内容
 
-The Markdown body after the frontmatter contains the skill instructions. There are no format restrictions. Write whatever helps agents perform the task effectively.
+frontmatter 之后的 Markdown 正文包含 skill instructions。这里没有格式限制。只要能帮助 agent 有效完成 task，都可以写入。
 
-Recommended sections:
-- Step-by-step instructions
-- Examples of inputs and outputs
-- Common edge cases
+推荐章节：
+- 分步 instructions
+- 输入和输出示例
+- 常见边界情况
 
-Note that the agent will load this entire file once it's decided to activate a skill. Consider splitting longer `SKILL.md` content into referenced files.
+请注意，一旦 agent 决定激活 某个 skill，它会加载整个 file。对于较长的 `SKILL.md` 内容，可以考虑拆分到referenced 文件中。
 
-## Optional directories
+## 可选 directory
 
 ### `scripts/`
 
-Contains executable code that agents can run. Scripts should:
-- Be self-contained or clearly document dependencies
-- Include helpful error messages
-- Handle edge cases gracefully
+包含 agent 可以运行的executable code。 script 应：
+- 自包含，或清楚记录依赖项
+- 包含有帮助的错误消息
+- 优雅地处理边界情况
 
-Supported languages depend on the agent implementation. Common options include Python, Bash, and JavaScript.
+支持的语言取决于 agent 实现。常见选择包括 Python、 Bash 和 JavaScript。
 
 ### `references/`
 
-Contains additional documentation that agents can read when needed:
-- `REFERENCE.md` - Detailed technical reference
-- `FORMS.md` - Form templates or structured data formats
-- Domain-specific files (`finance.md`, `legal.md`, etc.)
+包含 agent 可在需要时读取的附加 documentation：
+- `REFERENCE.md` - 详细技术参考
+- `FORMS.md` - 表单 template 或 structured 数据格式
+- 领域特定 file（`finance.md`、`legal.md` 等）
 
-Keep individual [reference files](#file-references) focused. Agents load these on demand, so smaller files mean less use of context.
+保持单个[参考 file](#file-references)聚焦。 agent 会按需加载这些 file，因此 file 越小，占用的 context 越少。
 
 ### `assets/`
 
-Contains static resources:
-- Templates (document templates, configuration templates)
-- Images (diagrams, examples)
-- Data files (lookup tables, schemas)
+包含静态 resource：
+- template（documentationtemplate、配置 template）
+- 图片（图表、示例）
+- 数据 file（查找表、 schema）
 
-## Progressive disclosure
+## progressive disclosure
 
-Agents load skills *progressively*, pulling in more detail only as a task calls for it. Skills should be structured to take advantage of this:
+agent 会*渐进式*加载 skills，只在 task 需要时引入更多细节。Skills 应按这种方式组织：
 
-1. **Metadata** (~100 tokens): The `name` and `description` fields are loaded at startup for all skills
-2. **Instructions** (< 5000 tokens recommended): The full `SKILL.md` body is loaded when the skill is activated
-3. **Resources** (as needed): Files (e.g. those in `scripts/`, `references/`, or `assets/`) are loaded only when required
+1. **metadata**（约 100 个 token）：启动时为所有 skills 加载 `name` 和 `description` field
+2. **instructions**（建议少于 5000 个 token）：skill 激活时加载完整的 `SKILL.md` 正文
+3. **resource**（按需）：只有在需要时才加载 file（例如 `scripts/`、`references/` 或 `assets/` 中的 file）
 
-Keep your main `SKILL.md` under 500 lines. Move detailed reference material to separate files.
+将主 `SKILL.md` 控制在 500 行以内。把详细参考资料移到单独 文件中。
 
-## File references
+## file reference
 
-When referencing other files in your skill, use relative paths from the skill root:
+在 skill 中 reference 其他 file 时，请使用相对于 skill 根 directory 的路径：
 
 ```markdown SKILL.md
 See [the reference guide](references/REFERENCE.md) for details.
@@ -232,14 +232,14 @@ Run the extraction script:
 scripts/extract.py
 ```
 
-Keep file references one level deep from `SKILL.md`. Avoid deeply nested reference chains.
+让 file reference 距离 `SKILL.md` 保持一层深度。避免深层嵌套的 reference 链。
 
-## Validation
+## validation
 
-Use the [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) reference library to validate your skills:
+使用 [skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref) 参考库 validation 你的 skills：
 
 ```bash
 skills-ref validate ./my-skill
 ```
 
-This checks that your `SKILL.md` frontmatter is valid and follows all naming conventions.
+这会检查你的 `SKILL.md` frontmatter 是否有效，并是否遵循所有命名约定。

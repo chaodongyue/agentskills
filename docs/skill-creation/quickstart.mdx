@@ -1,30 +1,29 @@
 ---
 title: "Quickstart"
-description: "Create your first Agent Skill and see it work in VS Code."
+description: "创建你的第一个 Agent Skill，并在 VS Code 中查看它的运行效果。"
 ---
 
-In this tutorial, you'll create a skill that gives an agent the capability to roll dice using a random number generator.
+在本教程中，你将创建一个 skill，让 agent 能够使用随机数生成器掷骰子。
 
 ## Prerequisites
 
-- [VS Code](https://code.visualstudio.com/) with [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot)
+- 安装了 [GitHub Copilot](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot) 的 [VS Code](https://code.visualstudio.com/)
 
 <Note>
-This tutorial uses VS Code, but Agent Skills are an open format. The same skill works in any compatible agent, including Claude Code and OpenAI Codex.
+本教程使用 VS Code，但 Agent Skills 是开放格式。同一个 skill 可以在任何兼容的 agent 中运行，包括 Claude Code 和 OpenAI Codex。
 </Note>
 
-## Create the skill
+## 创建 skill
 
-A skill is a folder containing a `SKILL.md` file. VS Code looks for skills in `.agents/skills/` by default. Create `.agents/skills/roll-dice/SKILL.md` in your project:
+一个 skill 是一个包含 `SKILL.md` file 的 folder。 VS Code 默认在 `.agents/skills/` 中查找 skills。在你的项目中创建 `.agents/skills/roll-dice/SKILL.md`：
 
 ````markdown .agents/skills/roll-dice/SKILL.md
 ---
 name: roll-dice
-description: Roll dice using a random number generator. Use when asked to roll a die (d6, d20, etc.), roll dice, or generate a random dice roll.
+description: 使用随机数生成器掷骰子。当被要求掷一个骰子（d6、 d20 等）、掷骰子或生成随机骰子结果时使用。
 ---
 
-To roll a die, use the following command that generates a random number from 1
-to the given number of sides:
+要掷一个骰子，请使用以下命令生成从 1 到指定面数之间的随机数：
 
 ```bash
 echo $((RANDOM % <sides> + 1))
@@ -34,47 +33,46 @@ echo $((RANDOM % <sides> + 1))
 Get-Random -Minimum 1 -Maximum (<sides> + 1)
 ```
 
-Replace `<sides>` with the number of sides on the die (e.g., 6 for a standard
-die, 20 for a d20).
+将 `<sides>` 替换为骰子的面数（例如，标准骰子为 6，d20 为 20）。
 ````
 
-That's it — one file, under 20 lines. Here's what each part does:
+就这样，一个不到 20 行的 file。以下是各部分的作用：
 
-- **`name`** — A short identifier for the skill. Must match the folder name.
-- **`description`** — Tells the agent when to use this skill. This is how the agent decides whether to activate it.
-- **The body** — Instructions the agent follows when the skill activates. Here, the agent is instructed to generate a random number using a terminal command, substituting the number of sides from the user's request.
+- **`name`**：skill 的短标识符。必须与 folder 名称匹配。
+- **`description`**：告诉 agent 何时使用这个 skill。 agent 会据此决定是否 激活它。
+- **正文**：skill 激活后 agent 要遵循的 instructions。这里的 instructions 要求 agent 使用终端命令生成随机数，并把user 请求中的面数代入命令。
 
-## Try it out
+## 试用
 
-1. Open your project in VS Code.
-2. Open the Copilot Chat panel.
-3. Select **Agent** mode from the mode dropdown at the bottom of the chat panel.
-4. Type `/skills` to confirm that `roll-dice` appears in the list. If it doesn't, check that the file is at `.agents/skills/roll-dice/SKILL.md` relative to your project root.
-5. Ask: **"Roll a d20"**
+1. 在 VS Code 中打开你的项目。
+2. 打开 Copilot Chat 面板。
+3. 从聊天面板底部的模式下拉菜单中选择 **Agent** 模式。
+4. 输入 `/skills`，确认 `roll-dice` 出现在列表中。如果没有，请检查该 file 是否位于相对于项目根 directory 的 `.agents/skills/roll-dice/SKILL.md`。
+5. 提问：**"Roll a d20"**
 
-The agent should activate the `roll-dice` skill. It may ask for permission to run a terminal command — allow it. It will run the command and return a random number between 1 and 20.
+agent 应该会激活 `roll-dice` skill。它可能会请求运行终端命令的 permission，请允许它。它会运行命令并返回 1 到 20 之间的随机数。
 
 <Note>
-Tool-use reliability varies across models — some follow skill instructions and run commands consistently, while others may attempt to answer on their own. If the agent responds without running a terminal command, try selecting a different model from the model dropdown.
+不同 model 的 tool 使用可靠性有所差异。有些 model 会稳定地遵循 skill instructions 并运行命令，另一些 model 可能会尝试自行回答。如果 agent 没有运行终端命令就直接回复，请尝试从 model 下拉菜单中选择另一个 model。
 </Note>
 
-## How it works
+## 工作原理
 
-Here's what happened behind the scenes:
+幕后发生了这些事情：
 
-1. **Discovery** — When the chat session started, the agent scanned default skill directories and found your skill. It read only the `name` and `description`, just enough to know when the skill might be relevant.
+1. **discovery**：聊天 session 启动时，agent 扫描默认 skill directory 并找到了你的 skill。它只读取了 `name` 和 `description`，刚好足以判断这个 skill 什么时候可能相关。
 
-2. **Activation** — When you asked about rolling dice, the agent matched your question to the skill's description and loaded the full `SKILL.md` body into context.
+2. **activation**：当你询问掷骰子时，agent 将你的问题与 skill 的 description 匹配，并把完整的 `SKILL.md` 正文加载到 context 中。
 
-3. **Execution** — The agent followed the instructions in the body, adapting the terminal command to the number of sides in your request.
+3. **execution**：agent 按照正文中的 instructions，将终端命令调整为你请求中的骰子面数。
 
-This process uses **progressive disclosure** to let the agent access many skills without loading all their instructions up front.
+这个过程使用**progressive disclosure**，让 agent 可以访问许多 skills，而无需一开始就加载它们的全部 instructions。
 
-## Next steps
+## 后续步骤
 
-You've created a working Agent Skill. From here:
+你已经创建了一个可运行的 Agent Skill。接下来可以阅读：
 
-- **[Best practices](/skill-creation/best-practices)** — How to write skills that are well-scoped and effective.
-- **[Optimizing skill descriptions](/skill-creation/optimizing-descriptions)** — Test and improve your skill's description so it activates on the right prompts.
-- **[Specification](/specification)** — The complete format reference for `SKILL.md` files.
-- **[Example skills](https://github.com/anthropics/skills)** — Browse real-world skills on GitHub.
+- **[Best practices](/skill-creation/best-practices)**：如何编写范围清晰且有效的 skills。
+- **[优化 skill 的 description](/skill-creation/optimizing-descriptions)**：测试并改进 skill 的 description，让它在合适的 prompt 下被激活。
+- **[specification](/specification)**：`SKILL.md` file 的完整格式参考。
+- **[示例 skills](https://github.com/anthropics/skills)**：在 GitHub 上浏览真实世界中的 skills。

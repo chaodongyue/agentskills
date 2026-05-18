@@ -1,74 +1,74 @@
 ---
 title: "Agent Skills Overview"
 sidebarTitle: "Overview"
-description: "A standardized way to give AI agents new capabilities and expertise."
+description: "一种为 AI agent 赋予新能力和专业知识的标准化方式。"
 ---
 
 import { clients } from '/snippets/clients.jsx';
 import { LogoCarousel } from '/snippets/LogoCarousel.jsx';
 
-## What are Agent Skills?
+## 什么是 Agent Skills？
 
-Agent Skills are a lightweight, open format for extending AI agent capabilities with specialized knowledge and workflows.
+Agent Skills 是一种轻量、开放的格式，用于通过专业知识和 workflow 扩展 AI agent 的能力。
 
-At its core, a skill is a folder containing a `SKILL.md` file. This file includes metadata (`name` and `description`, at minimum) and instructions that tell an agent how to perform a specific task. Skills can also bundle scripts, reference materials, templates, and other resources.
+从根本上说，一个 skill 就是一个包含 `SKILL.md` file 的 folder。该 file 至少包含 metadata（`name` 和 `description`）以及指导 agent 完成特定 task 的 instructions。Skill 还可以打包 script、参考资料、template 和其他 resource。
 
 ```
 my-skill/
-├── SKILL.md          # Required: metadata + instructions
-├── scripts/          # Optional: executable code
-├── references/       # Optional: documentation
-├── assets/           # Optional: templates, resources
-└── ...               # Any additional files or directories
+├──SKILL.md # 必需：metadata + instructions
+├──scripts/ # 可选：executable code
+├──references/ # 可选：documentation
+├──assets/ # 可选：template、resource
+└──... # 任何其他 file 或 directory
 ```
 
-## Why Agent Skills?
+## 为什么使用 Agent Skills？
 
-Agents are increasingly capable, but often don't have the context they need to do real work reliably. Skills solve this by packaging procedural knowledge and company-, team-, and user-specific context into portable, version-controlled folders that agents load on demand. This gives agents:
+agent 越来越有能力，但往往缺少可靠完成实际工作所需的 context。Skills 通过把流程性知识以及公司、团队和 user 专属的 context 打包成可移植、可版本控制、可按需加载的 folder 来解决这个问题。这为 agent 带来：
 
-- **Domain expertise**: Capture specialized knowledge — from legal review processes to data analysis pipelines to presentation formatting — as reusable instructions and resources.
-- **Repeatable workflows**: Turn multi-step tasks into consistent, auditable procedures.
-- **Cross-product reuse**: Build a skill once and use it across any skills-compatible agent.
+- **领域专业知识**：把专业知识（从法律审查流程、数据分析管道到演示文稿格式设置）沉淀为可复用的 instructions 和 resource。
+- **可重复的 workflow**：把多步骤 task 转化为一致、可审计的流程。
+- **跨产品复用**：只需构建一次 skill，即可在任何兼容 skills 的 agent 中使用。
 
-## How do Agent Skills work?
+## Agent Skills 如何工作？
 
-Agents load skills through **progressive disclosure**, in three stages:
+agent 通过**progressive disclosure**分三个阶段加载 skills：
 
-1. **Discovery**: At startup, agents load only the name and description of each available skill, just enough to know when it might be relevant.
+1. **discovery**：启动时，agent 只加载每个可用 skill 的名称和 description，刚好足以判断它何时可能相关。
 
-2. **Activation**: When a task matches a skill's description, the agent reads the full `SKILL.md` instructions into context.
+2. **activation**：当 task 匹配某个 skill 的 description 时，agent 会把完整的 `SKILL.md` instructions 读入 context。
 
-3. **Execution**: The agent follows the instructions, optionally executing bundled code or loading referenced files as needed.
+3. **execution**：agent 按照 instructions 执行，并可按需运行打包的代码或加载 referenced file。
 
-Full instructions load only when a task calls for them, so agents can keep many skills on hand with only a small context footprint.
+完整 instructions 只会在 task 需要时加载，因此 agent 可以随时保留大量 skills，同时只占用很小的 context 空间。
 
-## Where can I use Agent Skills?
+## 可以在哪里使用 Agent Skills？
 
-Agent Skills are supported by a large number of AI tools and agentic clients — see the [Client Showcase](/clients) to explore some of them!
+Agent Skills 已获得许多 AI tool 和 agent client 支持。你可以查看[client 展示](/clients)了解其中一部分！
 
 <LogoCarousel clients={clients} />
 
-## Open development
+## 开放开发
 
-The Agent Skills format was originally developed by [Anthropic](https://www.anthropic.com/), released as an open standard, and has been adopted by a growing number of agent products. The standard is open to contributions from the broader ecosystem.
+Agent Skills 格式最初由 [Anthropic](https://www.anthropic.com/) 开发，并以开放标准形式发布，目前已被越来越多的 agent 产品采用。该标准欢迎更广泛生态系统的贡献。
 
-Come join the discussion on [GitHub](https://github.com/agentskills/agentskills) or [Discord](https://discord.gg/MKPE9g8aUy)!
+欢迎在 [GitHub](https://github.com/agentskills/agentskills) 或 [Discord](https://discord.gg/MKPE9g8aUy) 参与讨论！
 
-## Get started with Agent Skills
+## 开始使用 Agent Skills
 
 <CardGroup cols={2}>
-  <Card
-    title="Quickstart"
-    icon="rocket"
-    href="/skill-creation/quickstart"
-  >
-    Create your first Agent Skill and see it in action.
-  </Card>
-  <Card
-    title="Specification"
-    icon="file-code"
-    href="/specification"
-  >
-    The complete format specification for Agent Skills.
-  </Card>
+ <Card
+ title="Quickstart"
+ icon="rocket"
+ href="/skill-creation/quickstart"
+ >
+ 创建你的第一个 Agent Skill，并看看它如何运行。
+ </Card>
+ <Card
+ title="specification"
+ icon="file-code"
+ href="/specification"
+ >
+ Agent Skills 的完整格式 specification。
+ </Card>
 </CardGroup>

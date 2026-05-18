@@ -1,335 +1,335 @@
 ---
-title: "How to add skills support to your agent"
-sidebarTitle: "Adding skills support"
-description: "A guide for adding Agent Skills support to an AI agent or development tool."
+title: "如何为你的 agent 添加 skills 支持"
+sidebarTitle: "添加 skills 支持"
+description: "为 AI agent 或开发 tool 添加 Agent Skills 支持的指南。"
 ---
 
-This guide walks through how to add Agent Skills support to an AI agent or development tool. It covers the full lifecycle: discovering skills, telling the model about them, loading their content into context, and keeping that content effective over time.
+本指南介绍如何为 AI agent 或开发 tool 添加 Agent Skills 支持。它覆盖完整生命周期：发现 skills、告知 model 它们的存在、将其内容加载到 context 中，以及让这些内容随时间保持有效。
 
-The core integration is the same regardless of your agent's architecture. The implementation details vary based on two factors:
+无论 agent 架构如何，核心集成方式都是一样的。实现细节主要取决于两个因素：
 
-- **Where do skills live?** A locally-running agent can scan the user's filesystem for skill directories. A cloud-hosted or sandboxed agent will need an alternative discovery mechanism — an API, a remote registry, or bundled assets.
-- **How does the model access skill content?** If the model has file-reading capabilities, it can read `SKILL.md` files directly. Otherwise, you'll provide a dedicated tool or inject skill content into the prompt programmatically.
+- **Skills 存放在哪里？** 本地运行的 agent 可以扫描 user 文件系统中的 skill directory。云托管或沙盒中的 agent 则需要替代 discovery 机制，例如 API、远程注册表或打包 asset。
+- **model 如何访问 skill 内容？** 如果 model 具备 file 读取能力，可以直接读取 `SKILL.md` file。否则，你需要提供专用 tool，或以编程方式将 skill 内容注入 prompt。
 
-The guide notes where these differences matter. You don't need to support every scenario — follow the path that fits your agent.
+本指南会指出这些差异在哪些地方重要。你不需要支持所有场景，只需选择适合你的 agent 的路径。
 
-**Prerequisites**: Familiarity with the [Agent Skills specification](/specification), which defines the `SKILL.md` file format, frontmatter fields, and directory conventions.
+**Prerequisites**：熟悉 [Agent Skills specification](/specification)，其中定义了 `SKILL.md` file 格式、 frontmatter field 和 directory 约定。
 
-## The core principle: progressive disclosure
+## 核心原则：progressive disclosure
 
-Every skills-compatible agent follows the same three-tier loading strategy:
+每个兼容 skills 的 agent 都遵循同样的三层加载策略：
 
-| Tier | What's loaded | When | Token cost |
+| 层级 | 加载内容 | 时机 | Token 成本 |
 |------|--------------|------|------------|
-| 1. Catalog | Name + description | Session start | ~50-100 tokens per skill |
-| 2. Instructions | Full `SKILL.md` body | When the skill is activated | &lt;5000 tokens (recommended) |
-| 3. Resources | Scripts, references, assets | When the instructions reference them | Varies |
+| 1. directory | 名称 + description | session 开始 | 每个 skill 约 50-100 token |
+| 2. instructions | 完整 `SKILL.md` 正文 | skill 被激活时 | &lt;5000 token（推荐） |
+| 3. resource | script、参考资料、asset | instructions 引用它们时 | 不定 |
 
-The model sees the catalog from the start, so it knows what skills are available. When it decides a skill is relevant, it loads the full instructions. If those instructions reference supporting files, the model loads them individually as needed.
+model 从一开始就看到 directory，因此知道有哪些 skills 可用。当它判断某个 skill 相关时，会加载完整 instructions。如果这些 instructions 引用了支持 file，model 会按需逐个加载它们。
 
-This keeps the base context small while giving the model access to specialized knowledge on demand. An agent with 20 installed skills doesn't pay the token cost of 20 full instruction sets upfront — only the ones actually used in a given conversation.
+这能保持基础 context 较小，同时让 model 按需访问专业知识。安装了 20 个 skills 的 agent 不需要预先支付 20 套完整 instructions 的 token 成本，只会为某次对话中实际使用的 skills 付出成本。
 
-## Step 1: Discover skills
+## 第 1 步：发现 skills
 
-At session startup, find all available skills and load their metadata.
+session 启动时，找到所有可用 skills 并加载它们的 metadata。
 
-### Where to scan
+### 扫描位置
 
-Which directories you scan depends on your agent's environment. Most locally-running agents scan at least two scopes:
+扫描哪些 directory 取决于 agent 环境。大多数本地运行的 agent 至少扫描两个范围：
 
-- **Project-level** (relative to the working directory): Skills specific to a project or repository.
-- **User-level** (relative to the home directory): Skills available across all projects for a given user.
+- **项目级**（相对于工作 directory）：特定于项目或仓库的 skills。
+- **user 级**（相对于 home directory）：某个 user 所有项目可用的 skills。
 
-Other scopes are possible too — for example, organization-wide skills deployed by an admin, or skills bundled with the agent itself. The right set of scopes depends on your agent's deployment model.
+也可以有其他范围，例如管理员部署的组织级 skills，或与 agent 自身打包的 skills。正确的范围集合取决于 agent 的部署 model。
 
-Within each scope, consider scanning both a **client-specific directory** and the **`.agents/skills/` convention**:
+在每个范围内，建议同时扫描**client 特定 directory**和 **`.agents/skills/` 约定 directory**：
 
-| Scope | Path | Purpose |
+| 范围 | 路径 | 目的 |
 |-------|------|---------|
-| Project | `<project>/.<your-client>/skills/` | Your client's native location |
-| Project | `<project>/.agents/skills/` | Cross-client interoperability |
-| User | `~/.<your-client>/skills/` | Your client's native location |
-| User | `~/.agents/skills/` | Cross-client interoperability |
+| 项目 | `<project>/.<your-client>/skills/` | 你的 client 原生位置 |
+| 项目 | `<project>/.agents/skills/` | 跨 client 互操作 |
+| user | `~/.<your-client>/skills/` | 你的 client 原生位置 |
+| user | `~/.agents/skills/` | 跨 client 互操作 |
 
-The `.agents/skills/` paths have emerged as a widely-adopted convention for cross-client skill sharing. While the Agent Skills specification does not mandate where skill directories live (it only defines what goes inside them), scanning `.agents/skills/` means skills installed by other compliant clients are automatically visible to yours, and vice versa.
+`.agents/skills/` 路径已经成为跨 client 共享 skills 的广泛采用约定。虽然 Agent Skills specification 不强制规定 skill directory 的位置（它只定义 directory 内部包含什么），但扫描 `.agents/skills/` 意味着其他合规 client 安装的 skills 会自动对你的 client 可见，反之亦然。
 
 <Note>
-Some implementations also scan `.claude/skills/` (both project-level and user-level) for pragmatic compatibility, since many existing skills are installed there. Other additional locations include ancestor directories up to the git root (useful for monorepos), [XDG](https://specifications.freedesktop.org/basedir-spec/latest/) config directories, and user-configured paths.
+一些实现也会扫描 `.claude/skills/`（项目级和 user 级都会扫描）以获得务实 compatibility，因为许多现有 skills 安装在那里。其他附加位置包括直到 git 根 directory 的祖先 directory（对 monorepo 有用）、[XDG](https://specifications.freedesktop.org/basedir-spec/latest/) 配置 directory，以及 user 配置的路径。
 </Note>
 
-### What to scan for
+### 扫描目标
 
-Within each skills directory, look for **subdirectories containing a file named exactly `SKILL.md`**:
+在每个 skills directory 中，查找**包含名称恰好为 `SKILL.md` 的 file 的子 directory**：
 
 ```
 ~/.agents/skills/
-├── pdf-processing/
-│   ├── SKILL.md          ← discovered
-│   └── scripts/
-│       └── extract.py
-├── data-analysis/
-│   └── SKILL.md          ← discovered
-└── README.md             ← ignored (not a skill directory)
+├──pdf-processing/
+│ ├──SKILL.md ←已发现
+│ └──scripts/
+│ └──extract.py
+├──data-analysis/
+│ └──SKILL.md ←已发现
+└──README.md ←已忽略（不是 skill directory）
 ```
 
-Practical scanning rules:
+实用扫描规则：
 
-- Skip directories that won't contain skills, such as `.git/` and `node_modules/`
-- Optionally respect `.gitignore` to avoid scanning build artifacts
-- Set reasonable bounds (e.g., max depth of 4-6 levels, max 2000 directories) to prevent runaway scanning in large directory trees
+- 跳过不会包含 skills 的 directory，例如 `.git/` 和 `node_modules/`
+- 可选择遵循 `.gitignore`，避免扫描构建产物
+- 设置合理边界（例如最大深度 4 到 6 层，最多 2000 个 directory），防止在大型 directory 树中失控扫描
 
-### Handling name collisions
+### 处理名称冲突
 
-When two skills share the same `name`, apply a deterministic precedence rule.
+当两个 skills 共享同一个 `name` 时，请应用确定性的优先级规则。
 
-The universal convention across existing implementations: **project-level skills override user-level skills.**
+现有实现中的通用约定是：**项目级 skills 覆盖 user 级 skills。**
 
-Within the same scope (e.g., two skills named `code-review` found under both `<project>/.agents/skills/` and `<project>/.<your-client>/skills/`), either first-found or last-found is acceptable — pick one and be consistent. Log a warning when a collision occurs so the user knows a skill was shadowed.
+在同一范围内（例如在 `<project>/.agents/skills/` 和 `<project>/.<your-client>/skills/` 下都找到名为 `code-review` 的 skills），先发现 优先或后发现 优先都可以，选择一种并保持一致。发生冲突时记录警告，让 user 知道某个 skill 被遮蔽了。
 
-### Trust considerations
+### 信任考量
 
-Project-level skills come from the repository being worked on, which may be untrusted (e.g., a freshly cloned open-source project). Consider gating project-level skill loading on a trust check — only load them if the user has marked the project folder as trusted. This prevents untrusted repositories from silently injecting instructions into the agent's context.
+项目级 skills 来自正在处理的仓库，而该仓库可能不受信任（例如刚克隆的开源项目）。请考虑用信任检查来控制项目级 skill 加载：只有当 user 将项目 folder 标记为受信任时才加载。这可以防止不受信任的仓库悄悄向 agent context 注入指令。
 
-### Cloud-hosted and sandboxed agents
+### 云托管和沙盒 agent
 
-If your agent runs in a container or on a remote server, it won't have access to the user's local filesystem. Discovery needs to work differently depending on the skill scope:
+如果 agent 运行在容器中或远程服务器上，就无法访问 user 本地 文件系统。 discovery 机制需要根据 skill 范围采用不同方式：
 
-- **Project-level skills** are often the easiest case. If the agent operates on a cloned repository (even inside a sandbox), project-level skills travel with the code and can be scanned from the repo's directory tree.
-- **User-level and organization-level skills** don't exist in the sandbox. You'll need to provision them from an external source — for example, cloning a configuration repository, accepting skill URLs or packages through your agent's settings, or letting users upload skill directories through a web UI.
-- **Built-in skills** can be packaged as static assets within the agent's deployment artifact, making them available in every session without external fetching.
+- **项目级 skills** 通常最容易处理。如果 agent 操作的是克隆仓库（即使在沙盒中），项目级 skills 会随代码一起存在，并可从仓库 directory 树中扫描。
+- **user 级和组织级 skills** 不存在于沙盒中。你需要从外部来源提供它们，例如克隆配置仓库、通过 agent 设置接受 skill URL 或包，或允许 user 通过 Web UI 上传 skill directory。
+- **内置 skills** 可以作为静态 asset 打包进 agent 部署产物，从而在每个 session 中可用，无需外部获取。
 
-Once skills are available to the agent, the rest of the lifecycle — parsing, disclosure, activation — works the same.
+一旦 skills 对 agent 可用，生命周期的其余部分（解析、披露、 activation）就以相同方式工作。
 
-## Step 2: Parse `SKILL.md` files
+## 第 2 步：解析`SKILL.md` file
 
-For each discovered `SKILL.md`, extract the metadata and body content.
+对每个发现 的 `SKILL.md`，提取 metadata 和正文内容。
 
-### Frontmatter extraction
+### 提取 frontmatter
 
-A `SKILL.md` file has two parts: YAML frontmatter between `---` delimiters, and a markdown body after the closing delimiter. To parse:
+`SKILL.md` file 包含两部分：位于 `---` 分隔符之间的 YAML frontmatter，以及结束分隔符之后的 markdown 正文。解析步骤：
 
-1. Find the opening `---` at the start of the file and the closing `---` after it.
-2. Parse the YAML block between them. Extract `name` and `description` (required), plus any optional fields.
-3. Everything after the closing `---`, trimmed, is the skill's body content.
+1. 找到 file 开头的 `---`，以及其后的结束 `---`。
+2. 解析它们之间的 YAML 块。提取 `name` 和 `description`（必需），以及所有可选 field。
+3. 结束 `---` 之后的所有内容在去除首尾空白后，就是 skill 的正文内容。
 
-See the [specification](/specification) for the full set of frontmatter fields and their constraints.
+完整 frontmatter field 及其约束请参阅[specification](/specification)。
 
-### Handling malformed YAML
+### 处理格式错误的 YAML
 
-Skill files authored for other clients may contain technically invalid YAML that their parsers happen to accept. The most common issue is unquoted values containing colons:
+为其他 client 编写的 skill file 可能包含技术上无效、但其解析器刚好接受的 YAML。最常见的问题是未加引号且包含冒号的值：
 
 ```yaml
-# Technically invalid YAML — the colon breaks parsing
-description: Use this skill when: the user asks about PDFs
+# 技术上无效的 YAML：冒号会破坏解析
+description: 当 user 询问 PDF 相关内容时使用这个 skill
 ```
 
-Consider a fallback that wraps such values in quotes or converts them to YAML block scalars before retrying. This improves cross-client compatibility at minimal cost.
+可以考虑提供 fallback：在重试前将这类值包上引号，或转换为 YAML 块标量。这能以很低成本提高跨 clientcompatibility。
 
-### Lenient validation
+### 宽松 validation
 
-Warn on issues but still load the skill when possible:
+遇到问题时发出警告，但尽可能仍加载 skill：
 
-- Name doesn't match the parent directory name → warn, load anyway
-- Name exceeds 64 characters → warn, load anyway
-- Description is missing or empty → skip the skill (a description is essential for disclosure), log the error
-- YAML is completely unparseable → skip the skill, log the error
+- 名称与父 directory 名称不匹配 → 警告，但仍加载
+- 名称超过 64 个字符 → 警告，但仍加载
+- description 缺失或为空 → 跳过该 skill（description 对披露至关重要），记录错误
+- YAML 完全无法解析→ 跳过该 skill，记录错误
 
-Record diagnostics so they can be surfaced to the user (in a debug command, log file, or UI), but don't block skill loading on cosmetic issues.
+记录 diagnostic 信息，以便向 user 展示（通过调试命令、日志 file 或 UI），但不要因为表面问题阻塞 skill 加载。
 
 <Note>
-The [specification](/specification) defines strict constraints on the `name` field (matching the parent directory, character set, max length). The lenient approach above deliberately relaxes these to improve compatibility with skills authored for other clients.
+[specification](/specification)对 `name` field 定义了严格约束（匹配父 directory、字符集、最大长度）。上面的宽松方法有意放松这些约束，以提高与其他 client 编写的 skills 的 compatibility。
 </Note>
 
-### What to store
+### 存储内容
 
-At minimum, each skill record needs three fields:
+每条 skill 记录至少需要三个 field：
 
-| Field | Description |
+| field | description |
 |-------|-------------|
-| `name` | From frontmatter |
-| `description` | From frontmatter |
-| `location` | Absolute path to the `SKILL.md` file |
+| `name` | 来自 frontmatter |
+| `description` | 来自 frontmatter |
+| `location` | `SKILL.md` file 的绝对路径 |
 
-Store these in an in-memory map keyed by `name` for fast lookup during activation.
+将它们存储在以内存中 `name` 为键的 map 中，以便 激活时快速查找。
 
-You can also store the **body** (the markdown content after the frontmatter) at discovery time, or read it from `location` at activation time. Storing it makes activation faster; reading it at activation time uses less memory in aggregate and picks up changes to skill files between activations.
+你也可以在发现时存储**正文**（frontmatter 之后的 markdown 内容），或在 激活时从 `location` 读取。存储正文会让 activation 更快；激活时读取则总体占用更少内存，并能捕捉两次 activation 之间 skill file 的变更。
 
-The skill's **base directory** (the parent directory of `location`) is needed later to resolve relative paths and enumerate bundled resources — derive it from `location` when needed.
+之后解析相对路径和枚举打包 resource 时会需要 skill 的**基础directory**（`location` 的父 directory），可在需要时从 `location` 推导。
 
-## Step 3: Disclose available skills to the model
+## 第 3 步：向 model 披露可用 skills
 
-Tell the model what skills exist without loading their full content. This is [tier 1 of progressive disclosure](#the-core-principle-progressive-disclosure).
+告诉 model 有哪些 skills 存在，但不加载完整内容。这是[progressive disclosure 的第 1 层](#the-core-principle-progressive-disclosure)。
 
-### Building the skill catalog
+### 构建 skill directory
 
-For each discovered skill, include `name`, `description`, and optionally `location` (the path to the `SKILL.md` file) in whatever structured format suits your stack — XML, JSON, or a bulleted list all work:
+对每个发现 的 skill，以适合你技术栈的 structured 格式包含 `name`、`description`，以及可选的 `location`（`SKILL.md` file 路径）。 XML、 JSON 或项目符号列表都可以：
 
 ```xml
 <available_skills>
-  <skill>
-    <name>pdf-processing</name>
-    <description>Extract PDF text, fill forms, merge files. Use when handling PDFs.</description>
-    <location>/home/user/.agents/skills/pdf-processing/SKILL.md</location>
-  </skill>
-  <skill>
-    <name>data-analysis</name>
-    <description>Analyze datasets, generate charts, and create summary reports.</description>
-    <location>/home/user/project/.agents/skills/data-analysis/SKILL.md</location>
-  </skill>
+ <skill>
+ <name>pdf-processing</name>
+ <description>提取 PDF 文本、填写表单、合并文件。处理 PDF 时使用。</description>
+ <location>/home/user/.agents/skills/pdf-processing/SKILL.md</location>
+ </skill>
+ <skill>
+ <name>data-analysis</name>
+ <description>分析数据集、生成图表并创建摘要报告。</description>
+ <location>/home/user/project/.agents/skills/data-analysis/SKILL.md</location>
+ </skill>
 </available_skills>
 ```
 
-The `location` field serves two purposes: it enables file-read activation (see [Step 4](#step-4-activate-skills)), and it gives the model a base path for resolving relative references in the skill body (like `scripts/evaluate.py`). If your dedicated activation tool provides the skill directory path in its result (see [Structured wrapping](#structured-wrapping) in Step 4), you can omit `location` from the catalog. Otherwise, include it.
+`location` field 有两个用途：启用 file 读取式 activation（参见[第 4 步](#step-4-activate-skills)），并为 model 解析 skill 正文中的相对 reference（例如 `scripts/evaluate.py`）提供基础路径。如果你的专用 activation tool 会在结果中提供 skill directory 路径（参见第 4 步中的[structured 包裹](#structured-wrapping)），则可以从 directory 中省略 `location`。否则，请包含它。
 
-Each skill adds roughly 50-100 tokens to the catalog. Even with dozens of skills installed, the catalog remains compact.
+每个 skill 大约会给 directory 增加 50 到 100 个 token。即使安装了几十个 skills，directory 仍然很紧凑。
 
-### Where to place the catalog
+### directory 放在哪里
 
-Two approaches are common:
+常见做法有两种：
 
-**System prompt section**: Add the catalog as a labeled section in the system prompt, preceded by brief instructions on how to use skills. This is the simplest approach and works with any model that has access to a file-reading tool.
+**系统 prompt 章节**：将 directory 作为带标签的章节加入系统 prompt，并在前面放上关于如何使用 skills 的简短 instructions。这是最简单的方法，适用于任何能访问 file 读取 tool 的 model。
 
-**Tool description**: Embed the catalog in the description of a dedicated skill-activation tool (see [Step 4](#step-4-activate-skills)). This keeps the system prompt clean and naturally couples discovery with activation.
+**tool description**：将 directory 嵌入专用 skill activation tool 的 description 中（参见[第 4 步](#step-4-activate-skills)）。这能保持系统 prompt 干净，并自然地将 discovery 与 activation 绑定在一起。
 
-Both work. System prompt placement is simpler and more broadly compatible; tool description embedding is cleaner when you have a dedicated activation tool.
+两者都可行。放在系统 prompt 中更简单且 compatibility 更广；当你有专用 activation tool 时，嵌入 tool description 更清爽。
 
-### Behavioral instructions
+### 行为 instructions
 
-Include a short instruction block alongside the catalog telling the model how and when to use skills. The wording depends on which activation mechanism you support (see [Step 4](#step-4-activate-skills)):
+在 directory 旁包含一小段 instructions，告诉 model 如何以及何时使用 skills。措辞取决于你支持哪种 激活机制（参见[第 4 步](#step-4-activate-skills)）：
 
-**If the model activates skills by reading files:**
-
-```
-The following skills provide specialized instructions for specific tasks.
-When a task matches a skill's description, use your file-read tool to load
-the SKILL.md at the listed location before proceeding.
-When a skill references relative paths, resolve them against the skill's
-directory (the parent of SKILL.md) and use absolute paths in tool calls.
-```
-
-**If the model activates skills via a dedicated tool:**
+**如果 model 通过读取 file 来 激活 skills：**
 
 ```
-The following skills provide specialized instructions for specific tasks.
-When a task matches a skill's description, call the activate_skill tool
-with the skill's name to load its full instructions.
+以下 skills 为特定 task 提供专业 instructions。
+当 task 匹配某个 skill 的 description 时，请先使用 file 读取 tool 加载所列位置的
+SKILL.md，然后再继续。
+当 skill reference 相对路径时，请基于该 skill 的 directory
+（SKILL.md 的父 directory）解析它们，并在 tool 调用中使用绝对路径。
 ```
 
-Keep these instructions concise. The goal is to tell the model that skills exist and how to load them — the skill content itself provides the detailed instructions once loaded.
+**如果 model 通过专用 tool 激活 skills：**
 
-### Filtering
+```
+以下 skills 为特定 task 提供专业 instructions。
+当 task 匹配某个 skill 的 description 时，请使用该 skill 的名称调用
+activate_skill tool，以加载其完整 instructions。
+```
 
-Some skills should be excluded from the catalog. Common reasons:
+保持这些 instructions 简洁。目标是告诉 model skills 存在以及如何加载它们；加载后，skill 内容本身会提供详细 instructions。
 
-- The user has disabled the skill in settings
-- A permission system denies access to the skill
-- The skill has opted out of model-driven activation (e.g., via a `disable-model-invocation` flag)
+### 过滤
 
-**Hide filtered skills entirely** from the catalog rather than listing them and blocking at activation time. This prevents the model from wasting turns attempting to load skills it can't use.
+有些 skills 应从 directory 中排除。常见原因：
 
-### When no skills are available
+- user 已在设置中禁用该 skill
+- permission 系统拒绝访问该 skill
+- 该 skill 已选择退出 model 驱动 activation（例如通过 `disable-model-invocation` 标志）
 
-If no skills are discovered, omit the catalog and behavioral instructions entirely. Don't show an empty `<available_skills/>` block or register a skill tool with no valid options — this would confuse the model.
+应从 directory 中**完全隐藏被过滤的 skills**，而不是列出它们并在 激活时阻止。这样可以避免 model 浪费轮次尝试加载无法使用的 skills。
 
-## Step 4: Activate skills
+### 没有可用 skills 时
 
-When the model or user selects a skill, deliver the full instructions into the conversation context. This is [tier 2 of progressive disclosure](#the-core-principle-progressive-disclosure).
+如果没有 发现 skills，请完全省略 directory 和行为 instructions。不要显示空的 `<available_skills/>` 块，也不要注册没有有效选项的 skill tool，这会让 model 困惑。
 
-### Model-driven activation
+## 第 4 步：激活 skills
 
-Most implementations rely on the model's own judgment as the activation mechanism, rather than implementing harness-side trigger matching or keyword detection. The model reads the catalog (from [Step 3](#step-3-disclose-available-skills-to-the-model)), decides a skill is relevant to the current task, and loads it.
+当 model 或 user 选择某个 skill 时，将完整 instructions 交付到对话 context 中。这是[progressive disclosure 的第 2 层](#the-core-principle-progressive-disclosure)。
 
-Two implementation patterns:
+### model 驱动 activation
 
-**File-read activation**: The model calls its standard file-read tool with the `SKILL.md` path from the catalog. No special infrastructure needed — the agent's existing file-reading capability is sufficient. The model receives the file content as a tool result. This is the simplest approach when the model has file access.
+大多数实现依赖 model 自身判断作为 激活机制，而不是在运行框架侧实现触发匹配或关键词检测。 model 读取 directory（来自[第 3 步](#step-3-disclose-available-skills-to-the-model)），判断某个 skill 与当前 task 相关，然后加载它。
 
-**Dedicated tool activation**: Register a tool (e.g., `activate_skill`) that takes a skill name and returns the content. This is required when the model can't read files directly, and optional (but useful) even when it can. Advantages over raw file reads:
+两种实现模式：
 
-- Control what content is returned — e.g., strip YAML frontmatter or preserve it (see [What the model receives](#what-the-model-receives) below)
-- Wrap content in structured tags for identification during context management
-- List bundled resources (e.g., `references/*`) alongside the instructions
-- Enforce permissions or prompt for user consent
-- Track activation for analytics
+**file 读取式 activation**：model 使用 directory 中的 `SKILL.md` 路径调用标准 file 读取 tool。不需要特殊基础设施，agent 现有 file 读取能力就足够。 model 会把 file 内容作为 tool 结果接收。当 model 具备 file 访问能力时，这是最简单的方法。
+
+**专用 toolactivation**：注册一个 tool（例如 `activate_skill`），接收 skill 名称并返回内容。当 model 无法直接读取 file 时，这是必需的；即使 model 能读取 file，它也是可选但有用的。相比直接 file 读取，它的优势包括：
+
+- 控制返回哪些内容，例如去除 YAML frontmatter 或保留它（参见下方[model 接收什么](#what-the-model-receives)）
+- 用 structured 标签包裹内容，以便在 context 管理中识别
+- 在 instructions 旁列出打包 resource（例如 `references/*`）
+- executionpermission 检查或提示 user 同意
+- 跟踪 activation 以用于分析
 
 <Tip>
-If you use a dedicated activation tool, constrain the `name` parameter to the set of valid skill names (e.g., as an enum in the tool schema). This prevents the model from hallucinating nonexistent skill names. If no skills are available, don't register the tool at all.
+如果使用专用 activation tool，请将 `name` 参数限制为有效 skill 名称集合（例如在 tool schema 中作为 enum）。这可以防止 model 幻觉出不存在的 skill 名称。如果没有可用 skills，请完全不要注册该 tool。
 </Tip>
 
-### User-explicit activation
+### user 显式 activation
 
-Users should also be able to activate skills directly, without waiting for the model to decide. The most common pattern is a **slash command or mention syntax** (`/skill-name` or `$skill-name`) that the harness intercepts. The specific syntax is up to you — the key idea is that the harness handles the lookup and injection, so the model receives skill content without needing to take an activation action itself.
+user 也应该能够直接 激活 skills，而无需等待 model 判断。最常见模式是由运行框架拦截的**斜杠命令或提及语法**（`/skill-name` 或 `$skill-name`）。具体语法由你决定；关键思想是运行框架负责查找和注入，让 model 无需自行 executionactivation 动作即可接收 skill 内容。
 
-An autocomplete widget (listing available skills as the user types) can also make this discoverable.
+自动补全组件（在 user 输入时列出可用 skills）也能提高可 discovery 性。
 
-### What the model receives
+### model 接收什么
 
-When a skill is activated, the model receives the skill's instructions. Two options for what exactly that content looks like:
+skill 被激活时，model 会接收该 skill 的 instructions。具体内容形式有两种选择：
 
-**Full file**: The model sees the entire `SKILL.md` including YAML frontmatter. This is the natural outcome with file-read activation, where the model reads the raw file. It's also a valid choice for dedicated tools. The frontmatter may contain fields useful at activation time — for example, [`compatibility`](/specification#compatibility-field) notes environment requirements that could inform how the model executes the skill's instructions.
+**完整 file**：model 看到整个 `SKILL.md`，包括 YAML frontmatter。这是 file 读取式 激活的自然结果，因为 model 读取的是原始 file。对于专用 tool，这也是有效选择。 frontmatter 可能包含 激活时有用的 field，例如 [`compatibility`](/specification#compatibility-field) 会记录环境要求，从而影响 model 如何 执行 skill instructions。
 
-**Body only (frontmatter stripped)**: The harness parses and removes the YAML frontmatter, returning only the markdown instructions. Among existing implementations with dedicated activation tools, most take this approach — stripping the frontmatter after extracting `name` and `description` during discovery.
+**仅正文（去除 frontmatter）**：运行框架解析并移除 YAML frontmatter，只返回 markdown instructions。在带有专用 activation tool 的现有实现中，大多数采用这种方式：在 发现阶段提取 `name` 和 `description` 后去除 frontmatter。
 
-Both approaches work in practice.
+两种方式在实践中都可行。
 
-### Structured wrapping
+### structured 包裹
 
-If you use a dedicated activation tool, consider wrapping skill content in identifying tags. For example:
+如果使用专用 activation tool，可以考虑用可识别标签包裹 skill 内容。例如：
 
 ```xml
 <skill_content name="pdf-processing">
-# PDF Processing
+# PDF 处理
 
-## When to use this skill
-Use this skill when the user needs to work with PDF files...
+## 何时使用这个 skill
+当 user 需要处理 PDF 文件 时使用这个 skill...
 
-[rest of SKILL.md body]
+[SKILL.md 正文的其余部分]
 
-Skill directory: /home/user/.agents/skills/pdf-processing
-Relative paths in this skill are relative to the skill directory.
+Skill directory：/home/user/.agents/skills/pdf-processing
+此 skill 中的相对路径均相对于 skill directory。
 
 <skill_resources>
-  <file>scripts/extract.py</file>
-  <file>scripts/merge.py</file>
-  <file>references/pdf-spec-summary.md</file>
+ <file>scripts/extract.py</file>
+ <file>scripts/merge.py</file>
+ <file>references/pdf-spec-summary.md</file>
 </skill_resources>
 </skill_content>
 ```
 
-This has practical benefits:
+这有实际好处：
 
-- The model can clearly distinguish skill instructions from other conversation content
-- The harness can identify skill content during context compaction ([Step 5](#step-5-manage-skill-context-over-time))
-- Bundled resources are surfaced to the model without being eagerly loaded
+- model 可以清楚区分 skill instructions 和其他对话内容
+- 运行框架可以在 context 压缩期间识别 skill 内容（[第 5 步](#step-5-manage-skill-context-over-time)）
+- 打包 resource 会呈现给 model，但不会被急切加载
 
-### Listing bundled resources
+### 列出打包 resource
 
-When a dedicated activation tool returns skill content, it can also enumerate supporting files (scripts, references, assets) in the skill directory — but it should **not eagerly read them**. The model loads specific files on demand using its file-read tools when the skill's instructions reference them.
+当专用 activation tool 返回 skill 内容时，也可以枚举 skill directory 中的支持 file（script、参考资料、asset），但**不应急切读取它们**。当 skill instructions reference 具体 file 时，model 会使用 file 读取 tool 按需加载。
 
-For large skill directories, consider capping the listing and noting that it may be incomplete.
+对于大型 skill directory，可以考虑限制列表长度，并注明它可能不完整。
 
-### Permission allowlisting
+### permission 允许列表
 
-If your agent has a permission system that gates file access, **allowlist skill directories** so the model can read bundled resources without triggering user confirmation prompts. Without this, every reference to a bundled script or reference file results in a permission dialog, breaking the flow for skills that include resources beyond the `SKILL.md` itself.
+如果你的 agent 有控制 file 访问的 permission 系统，请将 **skill directory 加入允许列表**，这样 model 可以读取打包 resource 而不会触发 user 确认提示。否则，每次 reference 打包 script 或参考 file 都会弹出 permission 对话框，破坏包含 `SKILL.md` 之外 resource 的 skills 的流程。
 
-## Step 5: Manage skill context over time
+## 第 5 步：随时间管理 skill context
 
-Once skill instructions are in the conversation context, keep them effective for the duration of the session.
+一旦 skill instructions 进入对话 context，就需要在整个 session 期间保持它们有效。
 
-### Protect skill content from context compaction
+### 保护 skill 内容免受 context 压缩影响
 
-If your agent truncates or summarizes older messages when the context window fills up, **exempt skill content from pruning**. Skill instructions are durable behavioral guidance — losing them mid-conversation silently degrades the agent's performance without any visible error. The model continues operating but without the specialized instructions the skill provided.
+如果 agent 在 context 窗口填满时会截断或总结较早消息，请**将 skill 内容排除在剪枝之外**。Skill instructions 是持久的行为指导；在对话中途丢失它们，会在没有任何可见错误的情况下悄悄降低 agent 表现。 model 仍会继续运行，但不再拥有 skill 提供的专业 instructions。
 
-Common approaches:
+常见做法：
 
-- Flag skill tool outputs as protected so the pruning algorithm skips them
-- Use the [structured tags](#structured-wrapping) from Step 4 to identify skill content and preserve it during compaction
+- 将 skill tool 输出标记为受保护，让剪枝算法跳过它们
+- 使用第 4 步中的[structured 标签](#structured-wrapping)识别 skill 内容，并在压缩期间保留它
 
-### Deduplicate activations
+### activation 去重
 
-Consider tracking which skills have been activated in the current session. If the model (or user) attempts to load a skill that's already in context, you can skip the re-injection to avoid the same instructions appearing multiple times in the conversation.
+考虑跟踪当前 session 中已经激活 的 skills。如果 model（或 user）尝试加载已经在 context 中的 skill，可以跳过重复注入，避免同一 instructions 在对话中出现多次。
 
-### Subagent delegation (optional)
+### subagent 委派（可选）
 
-This is an advanced pattern only supported by some clients. Instead of injecting skill instructions into the main conversation, the skill is run in a **separate subagent session**. The subagent receives the skill instructions, performs the task, and returns a summary of its work to the main conversation.
+这是一种高级模式，只有部分 client 支持。它不是把skill instructions 注入主对话，而是在**单独的 subagent session**中运行该 skill。 subagent 接收 skill instructions、 执行 task，并将工作摘要返回主对话。
 
-This pattern is useful when a skill's workflow is complex enough to benefit from a dedicated, focused session.
+当某个 skill 的 workflow 足够复杂，能从专用且聚焦的 session 中受益时，这种模式很有用。
